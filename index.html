@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SafeGit — Safe multisig approvals for Git</title>
+  <meta name="description" content="SafeGit makes protected Git changes require Safe multisig approval through EIP-712 signatures, Postgres shared state, and a GitHub required check." />
+  <meta property="og:title" content="SafeGit — Safe multisig approvals for Git" />
+  <meta property="og:description" content="A step-by-step guide to install and use SafeGit for Safe-backed commit approval flows." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #08090a;
+      --bg-deep: #010102;
+      --panel: #0f1011;
+      --surface: rgba(255,255,255,0.035);
+      --surface-strong: rgba(255,255,255,0.06);
+      --line: rgba(255,255,255,0.08);
+      --line-soft: rgba(255,255,255,0.05);
+      --text: #f7f8f8;
+      --muted: #d0d6e0;
+      --dim: #8a8f98;
+      --faint: #62666d;
+      --accent: #7170ff;
+      --accent-bg: #5e6ad2;
+      --accent-hover: #828fff;
+      --green: #10b981;
+      --danger: #ef4444;
+      --code: #111217;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 20px 80px rgba(0,0,0,0.45);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      font-feature-settings: "cv01", "ss03";
+      background:
+        radial-gradient(circle at 50% -10%, rgba(113,112,255,.22), transparent 32rem),
+        radial-gradient(circle at 85% 8%, rgba(16,185,129,.08), transparent 22rem),
+        linear-gradient(180deg, var(--bg-deep), var(--bg) 34rem, #07080a 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code, pre, .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .wrap { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(8,9,10,.72);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .nav-inner {
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 510; letter-spacing: -0.02em; }
+    .mark {
+      width: 30px; height: 30px; border-radius: 9px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, #5e6ad2, #828fff);
+      box-shadow: 0 0 28px rgba(113,112,255,.38);
+    }
+    .mark svg { width: 18px; height: 18px; }
+    .nav-links { display: flex; gap: 20px; align-items: center; color: var(--dim); font-size: 13px; font-weight: 510; }
+    .nav-links a:hover { color: var(--text); }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 38px; padding: 0 14px; border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--muted); font-size: 13px; font-weight: 510;
+      transition: .18s ease;
+    }
+    .btn:hover { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.055); color: var(--text); transform: translateY(-1px); }
+    .btn.primary { border-color: transparent; background: var(--accent-bg); color: #fff; box-shadow: 0 0 32px rgba(94,106,210,.28); }
+    .btn.primary:hover { background: var(--accent-hover); }
+
+    .hero { padding: 104px 0 70px; text-align: center; }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      height: 32px; padding: 0 12px; border-radius: 999px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.025);
+      color: var(--muted); font-size: 12px; font-weight: 510; margin-bottom: 26px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px rgba(16,185,129,.8); }
+    h1 {
+      margin: 0 auto;
+      max-width: 930px;
+      font-size: clamp(46px, 8vw, 86px);
+      line-height: .96;
+      letter-spacing: -0.055em;
+      font-weight: 510;
+    }
+    .hero p {
+      max-width: 720px; margin: 26px auto 0;
+      color: var(--dim); font-size: clamp(17px, 2vw, 20px); line-height: 1.65; letter-spacing: -0.01em;
+    }
+    .hero-actions { display: flex; justify-content: center; gap: 12px; margin-top: 34px; flex-wrap: wrap; }
+
+    .terminal-card {
+      margin: 66px auto 0;
+      max-width: 960px;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .terminal-top { height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--line-soft); color: var(--faint); font-size: 12px; }
+    .traffic { width: 10px; height: 10px; border-radius: 50%; background: #3a3b42; }
+    .terminal-body { padding: 20px; display: grid; gap: 12px; }
+    .line { display: flex; gap: 12px; align-items: flex-start; font-size: 13px; line-height: 1.7; color: var(--muted); }
+    .prompt { color: var(--accent); user-select: none; }
+    .comment { color: var(--faint); }
+
+    section { padding: 76px 0; border-top: 1px solid var(--line-soft); }
+    .section-head { display: grid; gap: 12px; margin-bottom: 30px; }
+    .kicker { color: var(--accent); font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+    h2 { margin: 0; font-size: clamp(30px, 4vw, 48px); line-height: 1.02; letter-spacing: -0.035em; font-weight: 510; }
+    .lead { max-width: 780px; color: var(--dim); line-height: 1.7; font-size: 17px; margin: 0; }
+
+    .grid { display: grid; gap: 16px; }
+    .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    .card h3 { margin: 0 0 10px; font-size: 18px; letter-spacing: -0.018em; font-weight: 590; }
+    .card p { margin: 0; color: var(--dim); line-height: 1.65; font-size: 15px; }
+    .pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; font-weight: 510; background: rgba(255,255,255,.025); }
+
+    .flow { display: grid; gap: 14px; counter-reset: step; }
+    .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 18px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+    }
+    .step::before {
+      content: counter(step);
+      width: 42px; height: 42px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: rgba(113,112,255,.14);
+      color: #c7c9ff;
+      border: 1px solid rgba(113,112,255,.28);
+      font: 500 14px 'JetBrains Mono', monospace;
+    }
+    .step h3 { margin: 0 0 8px; font-size: 17px; font-weight: 590; letter-spacing: -0.015em; }
+    .step p { margin: 0 0 14px; color: var(--dim); line-height: 1.65; }
+
+    pre {
+      margin: 0;
+      overflow: auto;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--line-soft);
+      background: var(--code);
+      color: #d7daf3;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .copy-row { position: relative; }
+    .copy {
+      position: absolute; top: 9px; right: 9px;
+      border: 1px solid var(--line); background: rgba(255,255,255,.05); color: var(--muted);
+      border-radius: 7px; height: 28px; padding: 0 9px; font-size: 11px; cursor: pointer;
+    }
+    .copy:hover { color: var(--text); background: rgba(255,255,255,.08); }
+
+    .architecture {
+      display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 10px; align-items: stretch;
+    }
+    .node { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: rgba(255,255,255,.025); min-height: 112px; }
+    .node strong { display: block; margin-bottom: 8px; font-size: 14px; }
+    .node span { color: var(--dim); font-size: 13px; line-height: 1.45; display: block; }
+    .arrow { display: grid; place-items: center; color: var(--faint); font-family: 'JetBrains Mono', monospace; }
+
+    .warning { border-color: rgba(239,68,68,.25); background: rgba(239,68,68,.055); }
+    .success { border-color: rgba(16,185,129,.25); background: rgba(16,185,129,.055); }
+
+    footer { padding: 44px 0 70px; color: var(--faint); border-top: 1px solid var(--line-soft); }
+    footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; font-size: 13px; }
+
+    @media (max-width: 860px) {
+      .nav-links a:not(.btn) { display: none; }
+      .grid.three, .grid.two { grid-template-columns: 1fr; }
+      .architecture { grid-template-columns: 1fr; }
+      .arrow { display: none; }
+      .step { grid-template-columns: 1fr; }
+      .hero { padding-top: 72px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top" aria-label="SafeGit home">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M6 12.5 10 16l8-9" stroke="white" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span>SafeGit</span>
+      </a>
+      <div class="nav-links">
+        <a href="#why">Why</a>
+        <a href="#install">Install</a>
+        <a href="#flow">Flow</a>
+        <a href="#production">Production</a>
+        <a class="btn" href="#quickstart">Quickstart</a>
+      </div>
+    </div>
+  </nav>
+
+  <main id="top">
+    <header class="hero wrap">
+      <div class="eyebrow"><span class="dot"></span> Safe multisig approvals for protected Git changes</div>
+      <h1>Require a Safe before GitHub says a commit is good to merge.</h1>
+      <p>SafeGit creates an EIP-712 approval request for a Git commit, collects Safe owner signatures, stores shared state in Postgres, and lets CI enforce a <strong>Safe Verified</strong> required check.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="#quickstart">Run the flow</a>
+        <a class="btn" href="#architecture">See architecture</a>
+      </div>
+
+      <div class="terminal-card" aria-label="SafeGit command preview">
+        <div class="terminal-top"><span class="traffic"></span><span class="traffic"></span><span class="traffic"></span><span class="mono">safegit lifecycle</span></div>
+        <div class="terminal-body mono">
+          <div class="line"><span class="prompt">$</span><span>safegit request --ref HEAD</span><span class="comment"># creates EIP-712 approval payload</span></div>
+          <div class="line"><span class="prompt">$</span><span>open http://127.0.0.1:8787/approve/appr_xxxxxx</span><span class="comment"># owners sign</span></div>
+          <div class="line"><span class="prompt">$</span><span>safegit verify --ref HEAD</span><span class="comment"># required check passes only after threshold</span></div>
+        </div>
+      </div>
+    </header>
+
+    <section id="why">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">What it is</div>
+          <h2>Not GitHub’s native Verified badge. A stricter required check.</h2>
+          <p class="lead">GitHub natively understands GPG, SSH, and S/MIME commit signatures. A Safe is an ERC-1271 smart account, so SafeGit uses the practical route: a GitHub required check named something like <strong>Safe Verified</strong>.</p>
+        </div>
+        <div class="grid three">
+          <div class="card"><span class="pill">CLI</span><h3>Commit-aware requests</h3><p>Reads repo, branch, commit SHA, tree SHA, author, committer, Safe address, chain ID, nonce, and expiry.</p></div>
+          <div class="card"><span class="pill">EIP-712</span><h3>Human-reviewable signing</h3><p>Owners sign a structured <code>GitCommitApproval</code> payload instead of a bare hash with no context.</p></div>
+          <div class="card"><span class="pill">CI</span><h3>Merge enforcement</h3><p><code>safegit verify</code> exits non-zero unless the commit is approved, making it fit GitHub branch protection.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">Architecture</div>
+          <h2>The boring version that actually works.</h2>
+          <p class="lead">SafeGit is a CLI plus API plus Postgres. Local-only state is fine for demos; teams need shared state so signers, CI, and GitHub checks all see the same approval.</p>
+        </div>
+        <div class="architecture">
+          <div class="node"><strong>Developer CLI</strong><span><code>request</code>, <code>status</code>, <code>verify</code></span></div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>Postgres</strong><span>Repos, approval payloads, signatures, status</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>API + UI</strong><span><code>/approve/:id</code> and signature submit endpoint</span></div>
+          <div class="node"><strong>Safe owners</strong><span>Sign typed data from browser or LocalSafe</span></div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>Safe onchain</strong><span>Optional live <code>getOwners()</code> / <code>getThreshold()</code></span></div>
+          <div class="arrow">→</div>
+          <div class="node"><strong>GitHub Check</strong><span>Require <code>Safe Verified</code> before merge</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">Install</div>
+          <h2>Install locally with pnpm only.</h2>
+          <p class="lead">SafeGit is intentionally pnpm-only. No npm lockfile, no mixed package managers.</p>
+        </div>
+        <div class="grid two">
+          <div class="card">
+            <h3>Local CLI install</h3>
+            <div class="copy-row"><button class="copy">copy</button><pre><code>git clone https://github.com/agent-cortex/safegit.git
+cd safegit
+pnpm install
+pnpm link --global</code></pre></div>
+          </div>
+          <div class="card">
+            <h3>Run API + Postgres with Docker</h3>
+            <div class="copy-row"><button class="copy">copy</button><pre><code>cd safegit
+docker compose up --build</code></pre></div>
+            <p style="margin-top:14px">API defaults to <code>http://127.0.0.1:8787</code>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quickstart">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">Exact flow</div>
+          <h2>Step-by-step: from repo to Safe-approved commit.</h2>
+          <p class="lead">This is the complete happy path. Use Sepolia for testing; use the real chain ID and Safe address for production.</p>
+        </div>
+        <div class="flow" id="flow">
+          <article class="step">
+            <div>
+              <h3>Start Postgres and the API</h3>
+              <p>The Docker Compose path is the fastest way to run the shared backend.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>cd safegit
+docker compose up --build</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Export the DB URL for CLI commands</h3>
+              <p>The CLI and server must point at the same database.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>export SAFEGIT_DATABASE_URL='postgres://safegit:REPLACE_ME@127.0.0.1:5432/safegit'</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Optional: enable live Safe owner checks</h3>
+              <p>When configured, SafeGit reads <code>getOwners()</code> and <code>getThreshold()</code> from the Safe and rejects non-owners.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>export SAFEGIT_RPC_URL='https://ethereum-sepolia-rpc.publicnode.com'</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Run migrations</h3>
+              <p>Creates the repo, approval request, and signature tables.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>safegit migrate</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Initialize SafeGit inside your target repo</h3>
+              <p>This writes <code>.safegit.yml</code> and registers repo → Safe mapping in Postgres.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>cd /path/to/your/repo
+safegit init \
+  --safe 0xYourSafeAddress \
+  --chain-id 11155111 \
+  --threshold 2</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Create an approval request for the commit</h3>
+              <p>SafeGit captures the current Git metadata and creates a typed-data payload.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>safegit request --ref HEAD</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Owners open the approval page and sign</h3>
+              <p>The page loads the backend payload, connects wallet, calls <code>eth_signTypedData_v4</code>, and submits the signature.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>open http://127.0.0.1:8787/approve/&lt;approvalId&gt;</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Check status</h3>
+              <p>Before threshold: <code>pending</code>. After enough owner signatures: <code>approved</code>.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>safegit status --ref HEAD</code></pre></div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div>
+              <h3>Enforce in CI</h3>
+              <p><code>verify</code> exits non-zero until the commit is approved. That is the required check.</p>
+              <div class="copy-row"><button class="copy">copy</button><pre><code>safegit verify --ref HEAD</code></pre></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="github">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">GitHub Actions</div>
+          <h2>Turn approval into branch protection.</h2>
+          <p class="lead">Add a workflow that runs <code>safegit verify</code>, then require the check in GitHub branch protection. This is the MVP path; a full GitHub App can create check-runs directly later.</p>
+        </div>
+        <div class="card">
+          <div class="copy-row"><button class="copy">copy</button><pre><code>name: Safe Verified
+on: [pull_request]
+
+jobs:
+  safe-verified:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./path-to-safegit
+        with:
+          database-url: ${{ secrets.SAFEGIT_DATABASE_URL }}
+          ref: HEAD</code></pre></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="production">
+      <div class="wrap">
+        <div class="section-head">
+          <div class="kicker">Production posture</div>
+          <h2>What is MVP-complete vs what still needs hardening.</h2>
+        </div>
+        <div class="grid two">
+          <div class="card success">
+            <h3>Already in the MVP</h3>
+            <p>CLI commands, Postgres state, EIP-712 payloads, signature recovery with viem, API endpoints, approval page, Docker Compose, GitHub Action template, and optional live Safe owner/threshold checks.</p>
+          </div>
+          <div class="card warning">
+            <h3>Before serious production use</h3>
+            <p>Add auth and rate limits, real GitHub App check-runs, historical owner-set verification by block, final ERC-1271 encoded-signature path, and proper package publishing.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>SafeGit — Safe-backed Git approval tooling.</span>
+      <span class="mono">CLI · API · Postgres · EIP-712 · GitHub required checks</span>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('.copy').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const code = button.parentElement.querySelector('code').innerText;
+        await navigator.clipboard.writeText(code);
+        const previous = button.textContent;
+        button.textContent = 'copied';
+        setTimeout(() => button.textContent = previous, 1200);
+      });
+    });
+  </script>
+</body>
+</html>
