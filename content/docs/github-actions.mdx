@@ -1,0 +1,38 @@
+---
+title: GitHub Actions
+description: Turn Safe approval into branch protection.
+---
+
+Add a workflow that runs `safegit verify`, then require the check in GitHub branch protection.
+
+## Required check workflow
+
+```yaml
+name: Safe Verified
+on: [pull_request]
+
+jobs:
+  safe-verified:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: agent-cortex/safegit@main
+        with:
+          database-url: ${{ secrets.SAFEGIT_DATABASE_URL }}
+          ref: HEAD
+```
+
+## Branch protection
+
+In GitHub repository settings:
+
+1. Open Branches.
+2. Add or edit the protection rule for your default branch.
+3. Enable required status checks.
+4. Require `Safe Verified`.
+
+## CI behavior
+
+`Safe Verified` should fail closed. If the backend is unavailable, the approval is missing, or the threshold is not met, the check should fail.
+
+That is the point.

@@ -1,5 +1,20 @@
 # SafeGit site
 
-Static redirect for the old SafeGit GitHub Pages site.
+Fumadocs-powered documentation site for SafeGit.
 
-Current destination: https://www.fumadocs.dev/docs
+## Development
+
+```bash
+pnpm install
+pnpm dev
+```
+
+## Build
+
+```bash
+pnpm build
+```
+
+## Deploy
+
+This site is deployed on Vercel.

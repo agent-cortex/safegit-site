@@ -1,0 +1,72 @@
+---
+title: Quickstart
+description: The complete happy path from repo to Safe-approved commit.
+---
+
+Use Sepolia while testing. Use your real chain ID and Safe address for production.
+
+## 1. Start Postgres and the API
+
+```bash
+cd safegit
+docker compose up --build
+```
+
+## 2. Point the CLI at the database
+
+```bash
+export SAFEGIT_DATABASE_URL='postgres://safegit:***@127.0.0.1:5432/safegit'
+```
+
+## 3. Optional: enable live Safe checks
+
+```bash
+export SAFEGIT_RPC_URL='https://ethereum-sepolia-rpc.publicnode.com'
+```
+
+When this is configured, SafeGit reads `getOwners()` and `getThreshold()` from the Safe and rejects non-owner signatures.
+
+## 4. Run migrations
+
+```bash
+safegit migrate
+```
+
+## 5. Initialize SafeGit in your target repo
+
+```bash
+cd /path/to/your/repo
+safegit init   --safe 0xYourSafeAddress   --chain-id 11155111   --threshold 2
+```
+
+## 6. Create an approval request
+
+```bash
+safegit request --ref HEAD
+```
+
+## 7. Owners sign
+
+Open the approval page returned by the command, or use this shape locally:
+
+```bash
+open http://127.0.0.1:8787/approve/<approvalId>
+```
+
+The page loads the typed payload, connects a wallet, calls `eth_signTypedData_v4`, and submits the signature.
+
+## 8. Check status
+
+```bash
+safegit status --ref HEAD
+```
+
+Before threshold: `pending`. After enough valid owner signatures: `approved`.
+
+## 9. Enforce it
+
+```bash
+safegit verify --ref HEAD
+```
+
+`verify` exits non-zero until the commit is approved. That is the required check.

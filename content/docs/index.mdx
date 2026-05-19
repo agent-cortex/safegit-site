@@ -1,0 +1,43 @@
+---
+title: SafeGit
+description: Safe multisig approvals for protected Git changes.
+---
+
+SafeGit makes GitHub branch protection understand Safe owner approval without pretending ERC-1271 is a native Git commit signature.
+
+It creates an EIP-712 approval request for a Git commit, collects Safe owner signatures, stores shared approval state, and lets CI enforce a required check before merge.
+
+## What SafeGit gives you
+
+- Commit-aware approval requests for repo, branch, commit SHA, tree SHA, author, committer, nonce, expiry, Safe address, and chain ID.
+- Human-readable EIP-712 signing instead of bare hash signing.
+- Optional live Safe owner and threshold validation via RPC.
+- A `safegit verify` command that can be required by GitHub branch protection.
+
+## The honest model
+
+SafeGit does not replace GitHub's native “Verified” badge. GitHub understands GPG, SSH, and S/MIME commit signatures. SafeGit adds a stricter required check named something like `Safe Verified`.
+
+That is the boring version, and boring is good here.
+
+## Install
+
+```bash
+git clone https://github.com/agent-cortex/safegit.git
+cd safegit
+pnpm install
+pnpm link --global
+```
+
+## Run the backend
+
+```bash
+cd safegit
+docker compose up --build
+```
+
+The API defaults to `http://127.0.0.1:8787`.
+
+## Next
+
+Start with [Quickstart](/docs/quickstart), then wire the verifier into [GitHub Actions](/docs/github-actions).

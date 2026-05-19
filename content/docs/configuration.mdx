@@ -1,0 +1,46 @@
+---
+title: Configuration
+description: Environment variables and operational settings.
+---
+
+## Required
+
+### `SAFEGIT_DATABASE_URL`
+
+Postgres connection string used by the CLI and API.
+
+```bash
+export SAFEGIT_DATABASE_URL='postgres://safegit:***@127.0.0.1:5432/safegit'
+```
+
+The CLI and server must point at the same database.
+
+## Recommended
+
+### `SAFEGIT_RPC_URL`
+
+RPC endpoint used for live Safe owner and threshold validation.
+
+```bash
+export SAFEGIT_RPC_URL='https://ethereum-sepolia-rpc.publicnode.com'
+```
+
+## Production hardening
+
+### `SAFEGIT_CORS_ORIGIN`
+
+Limit browser requests to your deployed approval UI.
+
+```bash
+export SAFEGIT_CORS_ORIGIN='https://safegit.example.com'
+```
+
+### `SAFEGIT_API_TOKEN`
+
+Require bearer token authentication for API clients.
+
+```bash
+export SAFEGIT_API_TOKEN='replace-with-a-long-random-token'
+```
+
+Do not expose secrets in client-side code. Ever.

@@ -1,0 +1,36 @@
+---
+title: Security Model
+description: What SafeGit protects, and what it deliberately does not claim.
+---
+
+SafeGit is a merge gate, not magic dust.
+
+## Protects against
+
+- Merging protected changes before Safe owners approve them.
+- Ambiguous signature payloads that owners cannot inspect.
+- Reusing an old approval for a different commit, branch, repo, Safe, or chain.
+- Counting duplicate signatures as multiple approvals.
+
+## Does not replace
+
+- GitHub's native commit signature verification.
+- Code review.
+- Secret scanning.
+- CI tests.
+- A sane deployment process.
+
+## Recommended production posture
+
+- Use HTTPS for the approval UI and API.
+- Keep API tokens server-side.
+- Use live Safe owner/threshold validation with `SAFEGIT_RPC_URL`.
+- Keep approval expiry windows short.
+- Make CI fail closed.
+- Require the Safe Verified check in branch protection.
+
+## Threat model note
+
+The strongest pattern is simple: owners sign a typed payload, the server verifies it, CI verifies threshold, and GitHub blocks merges until CI passes.
+
+No heroics. No vibes. Just a hard gate.
