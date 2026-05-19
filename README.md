@@ -1,5 +1,5 @@
 # SafeGit site
 
-Static explainer page for SafeGit: what it is, how to install it, and the exact approval flow.
+Static redirect for the old SafeGit GitHub Pages site.
 
-Published with GitHub Pages.
+Current destination: https://www.fumadocs.dev/docs
