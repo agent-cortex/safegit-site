@@ -5,14 +5,15 @@ description: Safe multisig approvals for protected Git changes.
 
 SafeGit makes GitHub branch protection understand Safe owner approval without pretending ERC-1271 is a native Git commit signature.
 
-It creates an EIP-712 approval request for a Git commit, collects Safe owner signatures, stores shared approval state, and lets CI enforce a required check before merge.
+It wraps the normal Git CLI flow, creates an EIP-712 approval request for a Git commit, collects Safe owner signatures, stores shared approval state, and lets `safegit push` or CI enforce approval before code leaves the workstation.
 
 ## What SafeGit gives you
 
 - Commit-aware approval requests for repo, branch, commit SHA, tree SHA, author, committer, nonce, expiry, Safe address, and chain ID.
 - Human-readable EIP-712 signing instead of bare hash signing.
 - Optional live Safe owner and threshold validation via RPC.
-- A `safegit verify` command that can be required by GitHub branch protection.
+- Git-compatible wrappers for commands like `safegit add`, `safegit commit`, `safegit status`, and `safegit push`.
+- A `safegit sign` command for the SafeGit approval step and `safegit verify` for branch protection.
 
 ## The honest model
 

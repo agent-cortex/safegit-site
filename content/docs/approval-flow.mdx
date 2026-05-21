@@ -7,14 +7,15 @@ SafeGit has four moving pieces: CLI, API, Postgres, and CI.
 
 ## Flow
 
-1. Developer runs `safegit request --ref HEAD`.
-2. The CLI reads Git metadata and repo Safe configuration.
-3. SafeGit creates a typed `GitCommitApproval` payload.
-4. The payload and status are stored in Postgres.
-5. Safe owners open `/approve/:id` and sign typed data.
-6. The API verifies signatures and counts unique valid owners.
-7. `safegit verify --ref HEAD` passes only after threshold.
-8. GitHub branch protection requires that check.
+1. Developer runs `safegit add ...` and `safegit commit -m ...`; SafeGit delegates those commands to `git`.
+2. Developer runs `safegit sign`.
+3. The CLI reads Git metadata and repo Safe configuration for `HEAD`.
+4. SafeGit creates a typed `GitCommitApproval` payload.
+5. The payload and status are stored in Postgres.
+6. Safe owners open `/approve/:id` and sign typed data.
+7. The API verifies signatures and counts unique valid owners.
+8. `safegit push` checks approval, then delegates to `git push`.
+9. CI can also run `safegit verify --ref HEAD`, and GitHub branch protection can require that check.
 
 ## Payload shape
 
